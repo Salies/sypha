@@ -5,7 +5,7 @@ import (
 
 	"github.com/Salies/sypha/nes"
 	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 type View interface {
