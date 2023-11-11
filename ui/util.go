@@ -35,14 +35,6 @@ func readJoystick(joy glfw.Joystick, turbo bool) [8]bool {
 	buttons := glfw.Joystick.GetButtons(joy)
 
 	if joyname == "PLAYSTATION(R)3 Controller" {
-		result[nes.ButtonA] = buttons[14] == 1 || (turbo && buttons[2] == 1)
-		result[nes.ButtonB] = buttons[13] == 1 || (turbo && buttons[3] == 1)
-		result[nes.ButtonSelect] = buttons[0] == 1
-		result[nes.ButtonStart] = buttons[3] == 1
-		result[nes.ButtonUp] = buttons[4] == 1 || axes[1] < -0.5
-		result[nes.ButtonDown] = buttons[6] == 1 || axes[1] > 0.5
-		result[nes.ButtonLeft] = buttons[7] == 1 || axes[0] < -0.5
-		result[nes.ButtonRight] = buttons[5] == 1 || axes[0] > 0.5
 		return result
 	}
 	if len(buttons) < 8 {
