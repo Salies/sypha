@@ -30,13 +30,10 @@ func readJoystick(joy glfw.Joystick, turbo bool) [8]bool {
 	if !glfw.Joystick.Present(joy) {
 		return result
 	}
-	joyname := glfw.Joystick.GetName(joy)
+
 	axes := glfw.Joystick.GetAxes(joy)
 	buttons := glfw.Joystick.GetButtons(joy)
 
-	if joyname == "PLAYSTATION(R)3 Controller" {
-		return result
-	}
 	if len(buttons) < 8 {
 		return result
 	}
