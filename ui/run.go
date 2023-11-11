@@ -24,7 +24,7 @@ func init() {
 	runtime.LockOSThread()
 }
 
-func Run(paths []string) {
+func Run(path string) {
 	// initialize audio
 	portaudio.Initialize()
 	defer portaudio.Terminate()
@@ -58,5 +58,5 @@ func Run(paths []string) {
 
 	// run director
 	director := NewDirector(window, audio)
-	director.Start(paths)
+	director.Start(path)
 }

@@ -18,7 +18,6 @@ type Director struct {
 	window    *glfw.Window
 	audio     *Audio
 	view      View
-	menuView  View
 	timestamp float64
 }
 
@@ -54,13 +53,8 @@ func (d *Director) Step() {
 	}
 }
 
-func (d *Director) Start(paths []string) {
-	d.menuView = NewMenuView(d, paths)
-	if len(paths) == 1 {
-		d.PlayGame(paths[0])
-	} else {
-		d.ShowMenu()
-	}
+func (d *Director) Start(path string) {
+	d.PlayGame(path)
 	d.Run()
 }
 
@@ -74,17 +68,9 @@ func (d *Director) Run() {
 }
 
 func (d *Director) PlayGame(path string) {
-	hash, err := hashFile(path)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	console, err := nes.NewConsole(path)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	d.SetView(NewGameView(d, console, path, hash))
-}
-
-func (d *Director) ShowMenu() {
-	d.SetView(d.menuView)
+	d.SetView(NewGameView(d, console))
 }

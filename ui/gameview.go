@@ -13,19 +13,16 @@ const padding = 0
 type GameView struct {
 	director *Director
 	console  *nes.Console
-	title    string
-	hash     string
 	texture  uint32
-	record   bool
 	frames   []image.Image
 }
 
-func NewGameView(director *Director, console *nes.Console, title, hash string) View {
+func NewGameView(director *Director, console *nes.Console) View {
 	texture := createTexture()
-	return &GameView{director, console, title, hash, texture, false, nil}
+	return &GameView{director, console, texture, nil}
 }
 
-func (view *GameView) load(snapshot int) {
+/*func (view *GameView) load(snapshot int) {
 	// load state
 	if err := view.console.LoadState(savePath(view.hash, snapshot)); err == nil {
 		return
@@ -49,22 +46,20 @@ func (view *GameView) save(snapshot int) {
 	}
 	// save state
 	view.console.SaveState(savePath(view.hash, snapshot))
-}
+}*/
 
 func (view *GameView) Enter() {
 	gl.ClearColor(0, 0, 0, 1)
-	view.director.SetTitle(view.title)
+	view.director.SetTitle("sypha")
 	view.console.SetAudioChannel(view.director.audio.channel)
 	view.console.SetAudioSampleRate(view.director.audio.sampleRate)
 	view.director.window.SetKeyCallback(view.onKey)
-	view.load(-1)
 }
 
 func (view *GameView) Exit() {
 	view.director.window.SetKeyCallback(nil)
 	view.console.SetAudioChannel(nil)
 	view.console.SetAudioSampleRate(0)
-	view.save(-1)
 }
 
 func (view *GameView) Update(t, dt float64) {
@@ -73,7 +68,7 @@ func (view *GameView) Update(t, dt float64) {
 	}
 	window := view.director.window
 	console := view.console
-	if joystickReset(glfw.Joystick1) {
+	/*if joystickReset(glfw.Joystick1) {
 		view.director.ShowMenu()
 	}
 	if joystickReset(glfw.Joystick2) {
@@ -81,21 +76,21 @@ func (view *GameView) Update(t, dt float64) {
 	}
 	if readKey(window, glfw.KeyEscape) {
 		view.director.ShowMenu()
-	}
+	}*/
 	updateControllers(window, console)
 	console.StepSeconds(dt)
 	gl.BindTexture(gl.TEXTURE_2D, view.texture)
 	setTexture(console.Buffer())
 	drawBuffer(view.director.window)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-	if view.record {
+	/*if view.record {
 		view.frames = append(view.frames, copyImage(console.Buffer()))
-	}
+	}*/
 }
 
 func (view *GameView) onKey(window *glfw.Window,
 	key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-	if action == glfw.Press {
+	/*if action == glfw.Press {
 		if key >= glfw.Key0 && key <= glfw.Key9 {
 			snapshot := int(key - glfw.Key0)
 			if mods&glfw.ModShift == 0 {
@@ -118,7 +113,7 @@ func (view *GameView) onKey(window *glfw.Window,
 				view.record = true
 			}
 		}
-	}
+	}*/
 }
 
 func drawBuffer(window *glfw.Window) {

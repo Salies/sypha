@@ -1,25 +1,32 @@
 package main
 
 import (
-	"io/ioutil"
+	/*"io/ioutil"
 	"log"
 	"os"
 	"path"
-	"strings"
-
+	"strings"*/
 	"github.com/fogleman/nes/ui"
+	//"fmt"
+	"os"
+	"log"
 )
 
 func main() {
-	log.SetFlags(0)
+	/*log.SetFlags(0)
 	paths := getPaths()
 	if len(paths) == 0 {
 		log.Fatalln("no rom files specified or found")
 	}
-	ui.Run(paths)
+	ui.Run(paths)*/
+	if len(os.Args) == 1 {
+		log.Fatalln("ERRO: por favor, informe o caminho para uma ROM.")
+	}
+	romPath := os.Args[1]
+	ui.Run(romPath)
 }
 
-func getPaths() []string {
+/*func getPaths() []string {
 	var arg string
 	args := os.Args[1:]
 	if len(args) == 1 {
@@ -49,3 +56,4 @@ func getPaths() []string {
 		return []string{arg}
 	}
 }
+*/
