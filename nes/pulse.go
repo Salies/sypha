@@ -31,7 +31,6 @@ func (p *Pulse) writeControl(value byte) {
 	p.envelopeEnabled = (value>>4)&1 == 0
 	p.envelopePeriod = value & 15
 	p.constantVolume = value & 15
-	p.envelopeStart = true
 }
 
 func (p *Pulse) writeSweep(value byte) {
