@@ -6,10 +6,10 @@ import (
 	"os"
 	"path"
 	"strings"*/
-	"github.com/fogleman/nes/ui"
+	"github.com/Salies/sypha/ui"
 	//"fmt"
-	"os"
 	"log"
+	"os"
 )
 
 func main() {
