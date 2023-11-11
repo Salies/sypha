@@ -13,7 +13,7 @@ const (
 	width  = 256
 	height = 240
 	scale  = 3
-	title  = "NES"
+	title  = "sypha"
 )
 
 func init() {

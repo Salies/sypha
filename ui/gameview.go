@@ -24,7 +24,6 @@ func NewGameView(director *Director, console *nes.Console) View {
 
 func (view *GameView) Enter() {
 	gl.ClearColor(0, 0, 0, 1)
-	view.director.SetTitle("sypha")
 	view.console.SetAudioChannel(view.director.audio.channel)
 	view.console.SetAudioSampleRate(view.director.audio.sampleRate)
 }
