@@ -48,10 +48,8 @@ func HighPassFilter(sampleRate float32, cutoffFreq float32) Filter {
 type FilterChain []Filter
 
 func (fc FilterChain) Step(x float32) float32 {
-	if fc != nil {
-		for i := range fc {
-			x = fc[i].Step(x)
-		}
+	for i := range fc {
+		x = fc[i].Step(x)
 	}
 	return x
 }
