@@ -22,32 +22,6 @@ func NewGameView(director *Director, console *nes.Console) View {
 	return &GameView{director, console, texture, nil}
 }
 
-/*func (view *GameView) load(snapshot int) {
-	// load state
-	if err := view.console.LoadState(savePath(view.hash, snapshot)); err == nil {
-		return
-	} else {
-		view.console.Reset()
-	}
-	// load sram
-	cartridge := view.console.Cartridge
-	if cartridge.Battery != 0 {
-		if sram, err := readSRAM(sramPath(view.hash, snapshot)); err == nil {
-			cartridge.SRAM = sram
-		}
-	}
-}
-
-func (view *GameView) save(snapshot int) {
-	// save sram
-	cartridge := view.console.Cartridge
-	if cartridge.Battery != 0 {
-		writeSRAM(sramPath(view.hash, snapshot), cartridge.SRAM)
-	}
-	// save state
-	view.console.SaveState(savePath(view.hash, snapshot))
-}*/
-
 func (view *GameView) Enter() {
 	gl.ClearColor(0, 0, 0, 1)
 	view.director.SetTitle("sypha")
