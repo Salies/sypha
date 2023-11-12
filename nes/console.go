@@ -3,11 +3,13 @@ package nes
 import (
 	"image"
 	"image/color"
+
+	"github.com/Salies/sypha/nes/apu"
 )
 
 type Console struct {
 	CPU         *CPU
-	APU         *APU
+	APU         *apu.APU
 	PPU         *PPU
 	Cartridge   *Cartridge
 	Controller1 *Controller
@@ -32,7 +34,7 @@ func NewConsole(path string) (*Console, error) {
 	}
 	console.Mapper = mapper
 	console.CPU = NewCPU(&console)
-	console.APU = NewAPU(console.IRQcallback, console.CPU.dmcStepReaderCallBack)
+	console.APU = apu.NewAPU(console.IRQcallback, console.CPU.dmcStepReaderCallBack)
 	console.PPU = NewPPU(&console)
 	return &console, nil
 }
@@ -91,20 +93,20 @@ func (console *Console) SetButtons2(buttons [8]bool) {
 }
 
 func (console *Console) SetAudioChannel(channel chan float32) {
-	console.APU.channel = channel
+	console.APU.Channel = channel
 }
 
 func (console *Console) SetAudioSampleRate(sampleRate float64) {
 	if sampleRate != 0 {
 		// Convert samples per second to cpu steps per sample
-		console.APU.sampleRate = CPUFrequency / sampleRate
+		console.APU.SampleRate = CPUFrequency / sampleRate
 		// Initialize filters
-		console.APU.filterChain = FilterChain{
-			HighPassFilter(float32(sampleRate), 90),
-			HighPassFilter(float32(sampleRate), 440),
-			LowPassFilter(float32(sampleRate), 14000),
+		console.APU.FilterChain = apu.FilterChain{
+			apu.HighPassFilter(float32(sampleRate), 90),
+			apu.HighPassFilter(float32(sampleRate), 440),
+			apu.LowPassFilter(float32(sampleRate), 14000),
 		}
 	} else {
-		console.APU.filterChain = nil
+		console.APU.FilterChain = nil
 	}
 }

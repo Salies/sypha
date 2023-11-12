@@ -26,7 +26,7 @@ func (mem *cpuMemory) Read(address uint16) byte {
 	case address == 0x4014:
 		return mem.console.PPU.readRegister(address)
 	case address == 0x4015:
-		return mem.console.APU.readRegister(address)
+		return mem.console.APU.ReadRegister(address)
 	case address == 0x4016:
 		return mem.console.Controller1.Read()
 	case address == 0x4017:
@@ -48,16 +48,16 @@ func (mem *cpuMemory) Write(address uint16, value byte) {
 	case address < 0x4000:
 		mem.console.PPU.writeRegister(0x2000+address%8, value)
 	case address < 0x4014:
-		mem.console.APU.writeRegister(address, value)
+		mem.console.APU.WriteRegister(address, value)
 	case address == 0x4014:
 		mem.console.PPU.writeRegister(address, value)
 	case address == 0x4015:
-		mem.console.APU.writeRegister(address, value)
+		mem.console.APU.WriteRegister(address, value)
 	case address == 0x4016:
 		mem.console.Controller1.Write(value)
 		mem.console.Controller2.Write(value)
 	case address == 0x4017:
-		mem.console.APU.writeRegister(address, value)
+		mem.console.APU.WriteRegister(address, value)
 	case address < 0x6000:
 		// TODO: I/O registers
 	case address >= 0x6000:

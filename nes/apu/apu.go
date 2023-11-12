@@ -1,6 +1,8 @@
-package nes
+package apu
 
-const frameCounterRate = CPUFrequency / 240.0
+import "github.com/Salies/sypha/util"
+
+const frameCounterRate = util.CPUFrequency / 240.0
 
 var lengthTable = [32]byte{
 	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -42,8 +44,8 @@ func init() {
 // APU
 
 type APU struct {
-	channel     chan float32
-	sampleRate  float64
+	Channel     chan float32
+	SampleRate  float64
 	pulse1      Pulse
 	pulse2      Pulse
 	triangle    Triangle
@@ -53,7 +55,7 @@ type APU struct {
 	framePeriod byte
 	frameValue  byte
 	frameIRQ    bool
-	filterChain FilterChain
+	FilterChain FilterChain
 	IRQcallback func()
 }
 
@@ -78,17 +80,17 @@ func (apu *APU) Step() {
 	if f1 != f2 {
 		apu.stepFrameCounter()
 	}
-	s1 := int(float64(cycle1) / apu.sampleRate)
-	s2 := int(float64(cycle2) / apu.sampleRate)
+	s1 := int(float64(cycle1) / apu.SampleRate)
+	s2 := int(float64(cycle2) / apu.SampleRate)
 	if s1 != s2 {
 		apu.sendSample()
 	}
 }
 
 func (apu *APU) sendSample() {
-	output := apu.filterChain.Step(apu.output())
+	output := apu.FilterChain.Step(apu.output())
 	select {
-	case apu.channel <- output:
+	case apu.Channel <- output:
 	default:
 	}
 }
@@ -174,7 +176,7 @@ func (apu *APU) fireIRQ() {
 	}
 }
 
-func (apu *APU) readRegister(address uint16) byte {
+func (apu *APU) ReadRegister(address uint16) byte {
 	switch address {
 	case 0x4015:
 		return apu.readStatus()
@@ -184,7 +186,7 @@ func (apu *APU) readRegister(address uint16) byte {
 	return 0
 }
 
-func (apu *APU) writeRegister(address uint16, value byte) {
+func (apu *APU) WriteRegister(address uint16, value byte) {
 	switch address {
 	case 0x4000:
 		apu.pulse1.writeControl(value)

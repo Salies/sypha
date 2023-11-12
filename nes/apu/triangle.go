@@ -1,4 +1,4 @@
-package nes
+package apu
 
 type Triangle struct {
 	enabled       bool
