@@ -32,9 +32,13 @@ func NewConsole(path string) (*Console, error) {
 	}
 	console.Mapper = mapper
 	console.CPU = NewCPU(&console)
-	console.APU = NewAPU(&console)
+	console.APU = NewAPU(console.IRQcallback, console.CPU.dmcStepReaderCallBack)
 	console.PPU = NewPPU(&console)
 	return &console, nil
+}
+
+func (console *Console) IRQcallback() {
+	console.CPU.triggerIRQ()
 }
 
 func (console *Console) Reset() {

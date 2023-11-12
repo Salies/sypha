@@ -42,7 +42,6 @@ func init() {
 // APU
 
 type APU struct {
-	console     *Console
 	channel     chan float32
 	sampleRate  float64
 	pulse1      Pulse
@@ -55,16 +54,17 @@ type APU struct {
 	frameValue  byte
 	frameIRQ    bool
 	filterChain FilterChain
+	IRQcallback func()
 }
 
-func NewAPU(console *Console) *APU {
+func NewAPU(IRQcallback func(), dmcCallback func(uint16) byte) *APU {
 	apu := APU{}
-	apu.console = console
 	apu.noise.shiftRegister = 1
 	apu.pulse1.channel = 1
 	apu.pulse2.channel = 2
 	apu.framePeriod = 4
-	apu.dmc.cpu = console.CPU
+	apu.dmc.readerCallback = dmcCallback
+	apu.IRQcallback = IRQcallback
 	return &apu
 }
 
@@ -170,7 +170,7 @@ func (apu *APU) stepLength() {
 
 func (apu *APU) fireIRQ() {
 	if apu.frameIRQ {
-		apu.console.CPU.triggerIRQ()
+		apu.IRQcallback()
 	}
 }
 

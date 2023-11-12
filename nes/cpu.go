@@ -373,6 +373,12 @@ func (cpu *CPU) triggerIRQ() {
 	}
 }
 
+// Assistant function for the APU's DMC
+func (cpu *CPU) dmcStepReaderCallBack(dmcCurrentAddress uint16) byte {
+	cpu.stall += 4
+	return cpu.Read(dmcCurrentAddress)
+}
+
 // stepInfo contains information that the instruction functions use
 type stepInfo struct {
 	address uint16

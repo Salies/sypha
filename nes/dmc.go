@@ -1,7 +1,6 @@
 package nes
 
 type DMC struct {
-	cpu            *CPU
 	enabled        bool
 	value          byte
 	sampleAddress  uint16
@@ -14,6 +13,7 @@ type DMC struct {
 	tickValue      byte
 	loop           bool
 	irq            bool
+	readerCallback func(uint16) byte
 }
 
 func (d *DMC) writeControl(value byte) {
@@ -56,8 +56,7 @@ func (d *DMC) stepTimer() {
 
 func (d *DMC) stepReader() {
 	if d.currentLength > 0 && d.bitCount == 0 {
-		d.cpu.stall += 4
-		d.shiftRegister = d.cpu.Read(d.currentAddress)
+		d.shiftRegister = d.readerCallback(d.currentAddress)
 		d.bitCount = 8
 		d.currentAddress++
 		if d.currentAddress == 0 {
