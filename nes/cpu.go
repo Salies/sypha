@@ -32,188 +32,298 @@ const (
 	modeZeroPageY
 )
 
-// instructionModes indicates the addressing mode for each instruction
-var instructionModes = [256]byte{
-	6, 7, 6, 7, 11, 11, 11, 11, 6, 5, 4, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-	1, 7, 6, 7, 11, 11, 11, 11, 6, 5, 4, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-	6, 7, 6, 7, 11, 11, 11, 11, 6, 5, 4, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-	6, 7, 6, 7, 11, 11, 11, 11, 6, 5, 4, 5, 8, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-	5, 7, 5, 7, 11, 11, 11, 11, 6, 5, 6, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 13, 13, 6, 3, 6, 3, 2, 2, 3, 3,
-	5, 7, 5, 7, 11, 11, 11, 11, 6, 5, 6, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 13, 13, 6, 3, 6, 3, 2, 2, 3, 3,
-	5, 7, 5, 7, 11, 11, 11, 11, 6, 5, 6, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-	5, 7, 5, 7, 11, 11, 11, 11, 6, 5, 6, 5, 1, 1, 1, 1,
-	10, 9, 6, 9, 12, 12, 12, 12, 6, 3, 6, 3, 2, 2, 2, 2,
-}
-
-// instructionSizes indicates the size of each instruction in bytes
-var instructionSizes = [256]byte{
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	3, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	1, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	1, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 0, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 0, 3, 0, 0,
-	2, 2, 2, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 2, 1, 0, 3, 3, 3, 0,
-	2, 2, 0, 0, 2, 2, 2, 0, 1, 3, 1, 0, 3, 3, 3, 0,
-}
-
-// instructionCycles indicates the number of cycles used by each instruction,
-// not including conditional cycles
-var instructionCycles = [256]byte{
-	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-	6, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-	2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
-	2, 6, 2, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5,
-	2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
-	2, 5, 2, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
-	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
-	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-}
-
-// instructionPageCycles indicates the number of cycles used by each
-// instruction when a page is crossed
-var instructionPageCycles = [256]byte{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0,
-}
-
-// instructionNames indicates the name of each instruction
-var instructionNames = [256]string{
-	"BRK", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
-	"BPL", "ORA", "KIL", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"JSR", "AND", "KIL", "RLA", "BIT", "AND", "ROL", "RLA",
-	"PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
-	"BMI", "AND", "KIL", "RLA", "NOP", "AND", "ROL", "RLA",
-	"SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
-	"RTI", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR", "SRE",
-	"BVC", "EOR", "KIL", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"RTS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
-	"BVS", "ADC", "KIL", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
-	"DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX", "SAX",
-	"BCC", "STA", "KIL", "AHX", "STY", "STA", "STX", "SAX",
-	"TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX", "AHX",
-	"LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"BCS", "LDA", "KIL", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
-	"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
-	"INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP",
-	"BNE", "CMP", "KIL", "DCP", "NOP", "CMP", "DEC", "DCP",
-	"CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
-	"CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC",
-	"INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
-	"BEQ", "SBC", "KIL", "ISC", "NOP", "SBC", "INC", "ISC",
-	"SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
+type Instruction struct {
+	mode       byte
+	size       byte
+	cycles     byte
+	pageCycles byte
+	name       string
+	call       func(*stepInfo)
 }
 
 type CPU struct {
-	Memory           // memory interface
-	Cycles    uint64 // number of cycles
-	PC        uint16 // program counter
-	SP        byte   // stack pointer
-	A         byte   // accumulator
-	X         byte   // x register
-	Y         byte   // y register
-	C         byte   // carry flag
-	Z         byte   // zero flag
-	I         byte   // interrupt disable flag
-	D         byte   // decimal mode flag
-	B         byte   // break command flag
-	U         byte   // unused flag
-	V         byte   // overflow flag
-	N         byte   // negative flag
-	interrupt byte   // interrupt type to perform
-	stall     int    // number of cycles to stall
-	table     [256]func(*stepInfo)
+	Memory              // memory interface
+	Cycles       uint64 // number of cycles
+	PC           uint16 // program counter
+	SP           byte   // stack pointer
+	A            byte   // accumulator
+	X            byte   // x register
+	Y            byte   // y register
+	C            byte   // carry flag
+	Z            byte   // zero flag
+	I            byte   // interrupt disable flag
+	D            byte   // decimal mode flag
+	B            byte   // break command flag
+	U            byte   // unused flag
+	V            byte   // overflow flag
+	N            byte   // negative flag
+	interrupt    byte   // interrupt type to perform
+	stall        int    // number of cycles to stall
+	instructions [256]Instruction
 }
 
 func NewCPU(console *Console) *CPU {
 	cpu := CPU{Memory: NewCPUMemory(console)}
-	cpu.createTable()
+	cpu.instructions = [256]Instruction{
+		{6, 2, 7, 0, "BRK", cpu.brk},
+		{7, 2, 6, 0, "ORA", cpu.ora},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{7, 0, 8, 0, "SLO", cpu.slo},
+		{11, 2, 3, 0, "NOP", cpu.nop},
+		{11, 2, 3, 0, "ORA", cpu.ora},
+		{11, 2, 5, 0, "ASL", cpu.asl},
+		{11, 0, 5, 0, "SLO", cpu.slo},
+		{6, 1, 3, 0, "PHP", cpu.php},
+		{5, 2, 2, 0, "ORA", cpu.ora},
+		{4, 1, 2, 0, "ASL", cpu.asl},
+		{5, 0, 2, 0, "ANC", cpu.anc},
+		{1, 3, 4, 0, "NOP", cpu.nop},
+		{1, 3, 4, 0, "ORA", cpu.ora},
+		{1, 3, 6, 0, "ASL", cpu.asl},
+		{1, 0, 6, 0, "SLO", cpu.slo},
+		{10, 2, 2, 1, "BPL", cpu.bpl},
+		{9, 2, 5, 1, "ORA", cpu.ora},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "SLO", cpu.slo},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "ORA", cpu.ora},
+		{12, 2, 6, 0, "ASL", cpu.asl},
+		{12, 0, 6, 0, "SLO", cpu.slo},
+		{6, 1, 2, 0, "CLC", cpu.clc},
+		{3, 3, 4, 1, "ORA", cpu.ora},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "SLO", cpu.slo},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "ORA", cpu.ora},
+		{2, 3, 7, 0, "ASL", cpu.asl},
+		{2, 0, 7, 0, "SLO", cpu.slo},
+		{1, 3, 6, 0, "JSR", cpu.jsr},
+		{7, 2, 6, 0, "AND", cpu.and},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{7, 0, 8, 0, "RLA", cpu.rla},
+		{11, 2, 3, 0, "BIT", cpu.bit},
+		{11, 2, 3, 0, "AND", cpu.and},
+		{11, 2, 5, 0, "ROL", cpu.rol},
+		{11, 0, 5, 0, "RLA", cpu.rla},
+		{6, 1, 4, 0, "PLP", cpu.plp},
+		{5, 2, 2, 0, "AND", cpu.and},
+		{4, 1, 2, 0, "ROL", cpu.rol},
+		{5, 0, 2, 0, "ANC", cpu.anc},
+		{1, 3, 4, 0, "BIT", cpu.bit},
+		{1, 3, 4, 0, "AND", cpu.and},
+		{1, 3, 6, 0, "ROL", cpu.rol},
+		{1, 0, 6, 0, "RLA", cpu.rla},
+		{10, 2, 2, 1, "BMI", cpu.bmi},
+		{9, 2, 5, 1, "AND", cpu.and},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "RLA", cpu.rla},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "AND", cpu.and},
+		{12, 2, 6, 0, "ROL", cpu.rol},
+		{12, 0, 6, 0, "RLA", cpu.rla},
+		{6, 1, 2, 0, "SEC", cpu.sec},
+		{3, 3, 4, 1, "AND", cpu.and},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "RLA", cpu.rla},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "AND", cpu.and},
+		{2, 3, 7, 0, "ROL", cpu.rol},
+		{2, 0, 7, 0, "RLA", cpu.rla},
+		{6, 1, 6, 0, "RTI", cpu.rti},
+		{7, 2, 6, 0, "EOR", cpu.eor},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{7, 0, 8, 0, "SRE", cpu.sre},
+		{11, 2, 3, 0, "NOP", cpu.nop},
+		{11, 2, 3, 0, "EOR", cpu.eor},
+		{11, 2, 5, 0, "LSR", cpu.lsr},
+		{11, 0, 5, 0, "SRE", cpu.sre},
+		{6, 1, 3, 0, "PHA", cpu.pha},
+		{5, 2, 2, 0, "EOR", cpu.eor},
+		{4, 1, 2, 0, "LSR", cpu.lsr},
+		{5, 0, 2, 0, "ALR", cpu.alr},
+		{1, 3, 3, 0, "JMP", cpu.jmp},
+		{1, 3, 4, 0, "EOR", cpu.eor},
+		{1, 3, 6, 0, "LSR", cpu.lsr},
+		{1, 0, 6, 0, "SRE", cpu.sre},
+		{10, 2, 2, 1, "BVC", cpu.bvc},
+		{9, 2, 5, 1, "EOR", cpu.eor},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "SRE", cpu.sre},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "EOR", cpu.eor},
+		{12, 2, 6, 0, "LSR", cpu.lsr},
+		{12, 0, 6, 0, "SRE", cpu.sre},
+		{6, 1, 2, 0, "CLI", cpu.cli},
+		{3, 3, 4, 1, "EOR", cpu.eor},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "SRE", cpu.sre},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "EOR", cpu.eor},
+		{2, 3, 7, 0, "LSR", cpu.lsr},
+		{2, 0, 7, 0, "SRE", cpu.sre},
+		{6, 1, 6, 0, "RTS", cpu.rts},
+		{7, 2, 6, 0, "ADC", cpu.adc},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{7, 0, 8, 0, "RRA", cpu.rra},
+		{11, 2, 3, 0, "NOP", cpu.nop},
+		{11, 2, 3, 0, "ADC", cpu.adc},
+		{11, 2, 5, 0, "ROR", cpu.ror},
+		{11, 0, 5, 0, "RRA", cpu.rra},
+		{6, 1, 4, 0, "PLA", cpu.pla},
+		{5, 2, 2, 0, "ADC", cpu.adc},
+		{4, 1, 2, 0, "ROR", cpu.ror},
+		{5, 0, 2, 0, "ARR", cpu.arr},
+		{8, 3, 5, 0, "JMP", cpu.jmp},
+		{1, 3, 4, 0, "ADC", cpu.adc},
+		{1, 3, 6, 0, "ROR", cpu.ror},
+		{1, 0, 6, 0, "RRA", cpu.rra},
+		{10, 2, 2, 1, "BVS", cpu.bvs},
+		{9, 2, 5, 1, "ADC", cpu.adc},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "RRA", cpu.rra},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "ADC", cpu.adc},
+		{12, 2, 6, 0, "ROR", cpu.ror},
+		{12, 0, 6, 0, "RRA", cpu.rra},
+		{6, 1, 2, 0, "SEI", cpu.sei},
+		{3, 3, 4, 1, "ADC", cpu.adc},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "RRA", cpu.rra},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "ADC", cpu.adc},
+		{2, 3, 7, 0, "ROR", cpu.ror},
+		{2, 0, 7, 0, "RRA", cpu.rra},
+		{5, 2, 2, 0, "NOP", cpu.nop},
+		{7, 2, 6, 0, "STA", cpu.sta},
+		{5, 0, 2, 0, "NOP", cpu.nop},
+		{7, 0, 6, 0, "SAX", cpu.sax},
+		{11, 2, 3, 0, "STY", cpu.sty},
+		{11, 2, 3, 0, "STA", cpu.sta},
+		{11, 2, 3, 0, "STX", cpu.stx},
+		{11, 0, 3, 0, "SAX", cpu.sax},
+		{6, 1, 2, 0, "DEY", cpu.dey},
+		{5, 0, 2, 0, "NOP", cpu.nop},
+		{6, 1, 2, 0, "TXA", cpu.txa},
+		{5, 0, 2, 0, "XAA", cpu.xaa},
+		{1, 3, 4, 0, "STY", cpu.sty},
+		{1, 3, 4, 0, "STA", cpu.sta},
+		{1, 3, 4, 0, "STX", cpu.stx},
+		{1, 0, 4, 0, "SAX", cpu.sax},
+		{10, 2, 2, 1, "BCC", cpu.bcc},
+		{9, 2, 6, 0, "STA", cpu.sta},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 6, 0, "AHX", cpu.ahx},
+		{12, 2, 4, 0, "STY", cpu.sty},
+		{12, 2, 4, 0, "STA", cpu.sta},
+		{13, 2, 4, 0, "STX", cpu.stx},
+		{13, 0, 4, 0, "SAX", cpu.sax},
+		{6, 1, 2, 0, "TYA", cpu.tya},
+		{3, 3, 5, 0, "STA", cpu.sta},
+		{6, 1, 2, 0, "TXS", cpu.txs},
+		{3, 0, 5, 0, "TAS", cpu.tas},
+		{2, 0, 5, 0, "SHY", cpu.shy},
+		{2, 3, 5, 0, "STA", cpu.sta},
+		{3, 0, 5, 0, "SHX", cpu.shx},
+		{3, 0, 5, 0, "AHX", cpu.ahx},
+		{5, 2, 2, 0, "LDY", cpu.ldy},
+		{7, 2, 6, 0, "LDA", cpu.lda},
+		{5, 2, 2, 0, "LDX", cpu.ldx},
+		{7, 0, 6, 0, "LAX", cpu.lax},
+		{11, 2, 3, 0, "LDY", cpu.ldy},
+		{11, 2, 3, 0, "LDA", cpu.lda},
+		{11, 2, 3, 0, "LDX", cpu.ldx},
+		{11, 0, 3, 0, "LAX", cpu.lax},
+		{6, 1, 2, 0, "TAY", cpu.tay},
+		{5, 2, 2, 0, "LDA", cpu.lda},
+		{6, 1, 2, 0, "TAX", cpu.tax},
+		{5, 0, 2, 0, "LAX", cpu.lax},
+		{1, 3, 4, 0, "LDY", cpu.ldy},
+		{1, 3, 4, 0, "LDA", cpu.lda},
+		{1, 3, 4, 0, "LDX", cpu.ldx},
+		{1, 0, 4, 0, "LAX", cpu.lax},
+		{10, 2, 2, 1, "BCS", cpu.bcs},
+		{9, 2, 5, 1, "LDA", cpu.lda},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 5, 1, "LAX", cpu.lax},
+		{12, 2, 4, 0, "LDY", cpu.ldy},
+		{12, 2, 4, 0, "LDA", cpu.lda},
+		{13, 2, 4, 0, "LDX", cpu.ldx},
+		{13, 0, 4, 0, "LAX", cpu.lax},
+		{6, 1, 2, 0, "CLV", cpu.clv},
+		{3, 3, 4, 1, "LDA", cpu.lda},
+		{6, 1, 2, 0, "TSX", cpu.tsx},
+		{3, 0, 4, 1, "LAS", cpu.las},
+		{2, 3, 4, 1, "LDY", cpu.ldy},
+		{2, 3, 4, 1, "LDA", cpu.lda},
+		{3, 3, 4, 1, "LDX", cpu.ldx},
+		{3, 0, 4, 1, "LAX", cpu.lax},
+		{5, 2, 2, 0, "CPY", cpu.cpy},
+		{7, 2, 6, 0, "CMP", cpu.cmp},
+		{5, 0, 2, 0, "NOP", cpu.nop},
+		{7, 0, 8, 0, "DCP", cpu.dcp},
+		{11, 2, 3, 0, "CPY", cpu.cpy},
+		{11, 2, 3, 0, "CMP", cpu.cmp},
+		{11, 2, 5, 0, "DEC", cpu.dec},
+		{11, 0, 5, 0, "DCP", cpu.dcp},
+		{6, 1, 2, 0, "INY", cpu.iny},
+		{5, 2, 2, 0, "CMP", cpu.cmp},
+		{6, 1, 2, 0, "DEX", cpu.dex},
+		{5, 0, 2, 0, "AXS", cpu.axs},
+		{1, 3, 4, 0, "CPY", cpu.cpy},
+		{1, 3, 4, 0, "CMP", cpu.cmp},
+		{1, 3, 6, 0, "DEC", cpu.dec},
+		{1, 0, 6, 0, "DCP", cpu.dcp},
+		{10, 2, 2, 1, "BNE", cpu.bne},
+		{9, 2, 5, 1, "CMP", cpu.cmp},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "DCP", cpu.dcp},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "CMP", cpu.cmp},
+		{12, 2, 6, 0, "DEC", cpu.dec},
+		{12, 0, 6, 0, "DCP", cpu.dcp},
+		{6, 1, 2, 0, "CLD", cpu.cld},
+		{3, 3, 4, 1, "CMP", cpu.cmp},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "DCP", cpu.dcp},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "CMP", cpu.cmp},
+		{2, 3, 7, 0, "DEC", cpu.dec},
+		{2, 0, 7, 0, "DCP", cpu.dcp},
+		{5, 2, 2, 0, "CPX", cpu.cpx},
+		{7, 2, 6, 0, "SBC", cpu.sbc},
+		{5, 0, 2, 0, "NOP", cpu.nop},
+		{7, 0, 8, 0, "ISC", cpu.isc},
+		{11, 2, 3, 0, "CPX", cpu.cpx},
+		{11, 2, 3, 0, "SBC", cpu.sbc},
+		{11, 2, 5, 0, "INC", cpu.inc},
+		{11, 0, 5, 0, "ISC", cpu.isc},
+		{6, 1, 2, 0, "INX", cpu.inx},
+		{5, 2, 2, 0, "SBC", cpu.sbc},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{5, 0, 2, 0, "SBC", cpu.sbc},
+		{1, 3, 4, 0, "CPX", cpu.cpx},
+		{1, 3, 4, 0, "SBC", cpu.sbc},
+		{1, 3, 6, 0, "INC", cpu.inc},
+		{1, 0, 6, 0, "ISC", cpu.isc},
+		{10, 2, 2, 1, "BEQ", cpu.beq},
+		{9, 2, 5, 1, "SBC", cpu.sbc},
+		{6, 0, 2, 0, "KIL", cpu.kil},
+		{9, 0, 8, 0, "ISC", cpu.isc},
+		{12, 2, 4, 0, "NOP", cpu.nop},
+		{12, 2, 4, 0, "SBC", cpu.sbc},
+		{12, 2, 6, 0, "INC", cpu.inc},
+		{12, 0, 6, 0, "ISC", cpu.isc},
+		{6, 1, 2, 0, "SED", cpu.sed},
+		{3, 3, 4, 1, "SBC", cpu.sbc},
+		{6, 1, 2, 0, "NOP", cpu.nop},
+		{3, 0, 7, 0, "ISC", cpu.isc},
+		{2, 3, 4, 1, "NOP", cpu.nop},
+		{2, 3, 4, 1, "SBC", cpu.sbc},
+		{2, 3, 7, 0, "INC", cpu.inc},
+		{2, 0, 7, 0, "ISC", cpu.isc},
+	}
 	cpu.Reset()
 	return &cpu
-}
-
-// createTable builds a function table for each instruction
-func (c *CPU) createTable() {
-	c.table = [256]func(*stepInfo){
-		c.brk, c.ora, c.kil, c.slo, c.nop, c.ora, c.asl, c.slo,
-		c.php, c.ora, c.asl, c.anc, c.nop, c.ora, c.asl, c.slo,
-		c.bpl, c.ora, c.kil, c.slo, c.nop, c.ora, c.asl, c.slo,
-		c.clc, c.ora, c.nop, c.slo, c.nop, c.ora, c.asl, c.slo,
-		c.jsr, c.and, c.kil, c.rla, c.bit, c.and, c.rol, c.rla,
-		c.plp, c.and, c.rol, c.anc, c.bit, c.and, c.rol, c.rla,
-		c.bmi, c.and, c.kil, c.rla, c.nop, c.and, c.rol, c.rla,
-		c.sec, c.and, c.nop, c.rla, c.nop, c.and, c.rol, c.rla,
-		c.rti, c.eor, c.kil, c.sre, c.nop, c.eor, c.lsr, c.sre,
-		c.pha, c.eor, c.lsr, c.alr, c.jmp, c.eor, c.lsr, c.sre,
-		c.bvc, c.eor, c.kil, c.sre, c.nop, c.eor, c.lsr, c.sre,
-		c.cli, c.eor, c.nop, c.sre, c.nop, c.eor, c.lsr, c.sre,
-		c.rts, c.adc, c.kil, c.rra, c.nop, c.adc, c.ror, c.rra,
-		c.pla, c.adc, c.ror, c.arr, c.jmp, c.adc, c.ror, c.rra,
-		c.bvs, c.adc, c.kil, c.rra, c.nop, c.adc, c.ror, c.rra,
-		c.sei, c.adc, c.nop, c.rra, c.nop, c.adc, c.ror, c.rra,
-		c.nop, c.sta, c.nop, c.sax, c.sty, c.sta, c.stx, c.sax,
-		c.dey, c.nop, c.txa, c.xaa, c.sty, c.sta, c.stx, c.sax,
-		c.bcc, c.sta, c.kil, c.ahx, c.sty, c.sta, c.stx, c.sax,
-		c.tya, c.sta, c.txs, c.tas, c.shy, c.sta, c.shx, c.ahx,
-		c.ldy, c.lda, c.ldx, c.lax, c.ldy, c.lda, c.ldx, c.lax,
-		c.tay, c.lda, c.tax, c.lax, c.ldy, c.lda, c.ldx, c.lax,
-		c.bcs, c.lda, c.kil, c.lax, c.ldy, c.lda, c.ldx, c.lax,
-		c.clv, c.lda, c.tsx, c.las, c.ldy, c.lda, c.ldx, c.lax,
-		c.cpy, c.cmp, c.nop, c.dcp, c.cpy, c.cmp, c.dec, c.dcp,
-		c.iny, c.cmp, c.dex, c.axs, c.cpy, c.cmp, c.dec, c.dcp,
-		c.bne, c.cmp, c.kil, c.dcp, c.nop, c.cmp, c.dec, c.dcp,
-		c.cld, c.cmp, c.nop, c.dcp, c.nop, c.cmp, c.dec, c.dcp,
-		c.cpx, c.sbc, c.nop, c.isc, c.cpx, c.sbc, c.inc, c.isc,
-		c.inx, c.sbc, c.nop, c.sbc, c.cpx, c.sbc, c.inc, c.isc,
-		c.beq, c.sbc, c.kil, c.isc, c.nop, c.sbc, c.inc, c.isc,
-		c.sed, c.sbc, c.nop, c.isc, c.nop, c.sbc, c.inc, c.isc,
-	}
 }
 
 // Reset resets the CPU to its initial powerup state
@@ -226,8 +336,8 @@ func (cpu *CPU) Reset() {
 // PrintInstruction prints the current CPU state
 func (cpu *CPU) PrintInstruction() {
 	opcode := cpu.Read(cpu.PC)
-	bytes := instructionSizes[opcode]
-	name := instructionNames[opcode]
+	bytes := cpu.instructions[opcode].size
+	name := cpu.instructions[opcode].name
 	w0 := fmt.Sprintf("%02X", cpu.Read(cpu.PC+0))
 	w1 := fmt.Sprintf("%02X", cpu.Read(cpu.PC+1))
 	w2 := fmt.Sprintf("%02X", cpu.Read(cpu.PC+2))
@@ -404,7 +514,7 @@ func (cpu *CPU) Step() int {
 	cpu.interrupt = interruptNone
 
 	opcode := cpu.Read(cpu.PC)
-	mode := instructionModes[opcode]
+	mode := cpu.instructions[opcode].mode
 
 	var address uint16
 	var pageCrossed bool
@@ -445,13 +555,13 @@ func (cpu *CPU) Step() int {
 		address = uint16(cpu.Read(cpu.PC+1)+cpu.Y) & 0xff
 	}
 
-	cpu.PC += uint16(instructionSizes[opcode])
-	cpu.Cycles += uint64(instructionCycles[opcode])
+	cpu.PC += uint16(cpu.instructions[opcode].size)
+	cpu.Cycles += uint64(cpu.instructions[opcode].cycles)
 	if pageCrossed {
-		cpu.Cycles += uint64(instructionPageCycles[opcode])
+		cpu.Cycles += uint64(cpu.instructions[opcode].pageCycles)
 	}
 	info := &stepInfo{address, cpu.PC, mode}
-	cpu.table[opcode](info)
+	cpu.instructions[opcode].call(info)
 
 	return int(cpu.Cycles - cycles)
 }
