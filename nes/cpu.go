@@ -63,7 +63,9 @@ type CPU struct {
 	instructions [256]Instruction
 }
 
-// CPU Memory Map
+// Emulação do barramento de memória da CPU
+// Alguns preferem mantê-lo separado, contudo, preferimos manter
+// junto para deixar o código mais objetivo. Dada a simplicidade do NES, isto não é um problema.
 type cpuMemory struct {
 	console *Console
 }
