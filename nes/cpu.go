@@ -38,7 +38,7 @@ type Instruction struct {
 	cycles     byte
 	pageCycles byte
 	name       string
-	call       func(*stepInfo)
+	call       func()
 }
 
 type CPU struct {
@@ -354,6 +354,7 @@ func (cpu *CPU) PrintInstruction() {
 		cpu.A, cpu.X, cpu.Y, cpu.Flags(), cpu.SP, (cpu.Cycles*3)%341)
 }
 
+// - Funções auxiliares
 // pagesDiffer returns true if the two addresses reference different pages
 func pagesDiffer(a, b uint16) bool {
 	return a&0xFF00 != b&0xFF00
@@ -361,9 +362,9 @@ func pagesDiffer(a, b uint16) bool {
 
 // addBranchCycles adds a cycle for taking a branch and adds another cycle
 // if the branch jumps to a new page
-func (cpu *CPU) addBranchCycles(info *stepInfo) {
+func (cpu *CPU) addBranchCycles() {
 	cpu.Cycles++
-	if pagesDiffer(info.pc, info.address) {
+	if pagesDiffer(currentPC, currentAddress) {
 		cpu.Cycles++
 	}
 }
@@ -489,14 +490,12 @@ func (cpu *CPU) dmcStepReaderCallBack(dmcCurrentAddress uint16) byte {
 	return cpu.Read(dmcCurrentAddress)
 }
 
-// stepInfo contains information that the instruction functions use
-type stepInfo struct {
-	address uint16
-	pc      uint16
-	mode    byte
-}
+// Variáveis auxiliares
+var currentAddress uint16
+var currentPC uint16
+var currentMode byte
 
-// Step executes a single CPU instruction
+// - Ciclo principal de processamento: processa uma (única) instrução na CPU
 func (cpu *CPU) Step() int {
 	if cpu.stall > 0 {
 		cpu.stall--
@@ -560,16 +559,19 @@ func (cpu *CPU) Step() int {
 	if pageCrossed {
 		cpu.Cycles += uint64(cpu.instructions[opcode].pageCycles)
 	}
-	info := &stepInfo{address, cpu.PC, mode}
-	cpu.instructions[opcode].call(info)
+	currentAddress = address
+	currentMode = mode
+	currentPC = cpu.PC
+	cpu.instructions[opcode].call()
 
 	return int(cpu.Cycles - cycles)
 }
 
+// - Emulação do conjunto de instruções do NES
 // NMI - Non-Maskable Interrupt
 func (cpu *CPU) nmi() {
 	cpu.push16(cpu.PC)
-	cpu.php(nil)
+	cpu.php()
 	cpu.PC = cpu.Read16(0xFFFA)
 	cpu.I = 1
 	cpu.Cycles += 7
@@ -578,16 +580,17 @@ func (cpu *CPU) nmi() {
 // IRQ - IRQ Interrupt
 func (cpu *CPU) irq() {
 	cpu.push16(cpu.PC)
-	cpu.php(nil)
+	cpu.php()
 	cpu.PC = cpu.Read16(0xFFFE)
 	cpu.I = 1
 	cpu.Cycles += 7
 }
 
 // ADC - Add with Carry
-func (cpu *CPU) adc(info *stepInfo) {
+func (cpu *CPU) adc() {
 	a := cpu.A
-	b := cpu.Read(info.address)
+	//b := cpu.Read(info.address)
+	b := cpu.Read(currentAddress)
 	c := cpu.C
 	cpu.A = a + b + c
 	cpu.setZN(cpu.A)
@@ -604,312 +607,317 @@ func (cpu *CPU) adc(info *stepInfo) {
 }
 
 // AND - Logical AND
-func (cpu *CPU) and(info *stepInfo) {
-	cpu.A = cpu.A & cpu.Read(info.address)
+func (cpu *CPU) and() {
+	//cpu.A = cpu.A & cpu.Read(info.address)
+	cpu.A = cpu.A & cpu.Read(currentAddress)
 	cpu.setZN(cpu.A)
 }
 
 // ASL - Arithmetic Shift Left
-func (cpu *CPU) asl(info *stepInfo) {
-	if info.mode == modeAccumulator {
+func (cpu *CPU) asl() {
+	if currentMode == modeAccumulator {
 		cpu.C = (cpu.A >> 7) & 1
 		cpu.A <<= 1
 		cpu.setZN(cpu.A)
 	} else {
-		value := cpu.Read(info.address)
+		//value := cpu.Read(info.address)
+		value := cpu.Read(currentAddress)
 		cpu.C = (value >> 7) & 1
 		value <<= 1
-		cpu.Write(info.address, value)
+		//cpu.Write(info.address, value)
+		cpu.Write(currentAddress, value)
 		cpu.setZN(value)
 	}
 }
 
 // BCC - Branch if Carry Clear
-func (cpu *CPU) bcc(info *stepInfo) {
+func (cpu *CPU) bcc() {
 	if cpu.C == 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		//cpu.PC = info.address
+		//cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BCS - Branch if Carry Set
-func (cpu *CPU) bcs(info *stepInfo) {
+func (cpu *CPU) bcs() {
 	if cpu.C != 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BEQ - Branch if Equal
-func (cpu *CPU) beq(info *stepInfo) {
+func (cpu *CPU) beq() {
 	if cpu.Z != 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BIT - Bit Test
-func (cpu *CPU) bit(info *stepInfo) {
-	value := cpu.Read(info.address)
+func (cpu *CPU) bit() {
+	value := cpu.Read(currentAddress)
 	cpu.V = (value >> 6) & 1
 	cpu.setZ(value & cpu.A)
 	cpu.setN(value)
 }
 
 // BMI - Branch if Minus
-func (cpu *CPU) bmi(info *stepInfo) {
+func (cpu *CPU) bmi() {
 	if cpu.N != 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BNE - Branch if Not Equal
-func (cpu *CPU) bne(info *stepInfo) {
+func (cpu *CPU) bne() {
 	if cpu.Z == 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BPL - Branch if Positive
-func (cpu *CPU) bpl(info *stepInfo) {
+func (cpu *CPU) bpl() {
 	if cpu.N == 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BRK - Force Interrupt
-func (cpu *CPU) brk(info *stepInfo) {
+func (cpu *CPU) brk() {
 	cpu.push16(cpu.PC)
-	cpu.php(info)
-	cpu.sei(info)
+	cpu.php()
+	cpu.sei()
 	cpu.PC = cpu.Read16(0xFFFE)
 }
 
 // BVC - Branch if Overflow Clear
-func (cpu *CPU) bvc(info *stepInfo) {
+func (cpu *CPU) bvc() {
 	if cpu.V == 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // BVS - Branch if Overflow Set
-func (cpu *CPU) bvs(info *stepInfo) {
+func (cpu *CPU) bvs() {
 	if cpu.V != 0 {
-		cpu.PC = info.address
-		cpu.addBranchCycles(info)
+		cpu.PC = currentAddress
+		cpu.addBranchCycles()
 	}
 }
 
 // CLC - Clear Carry Flag
-func (cpu *CPU) clc(info *stepInfo) {
+func (cpu *CPU) clc() {
 	cpu.C = 0
 }
 
 // CLD - Clear Decimal Mode
-func (cpu *CPU) cld(info *stepInfo) {
+func (cpu *CPU) cld() {
 	cpu.D = 0
 }
 
 // CLI - Clear Interrupt Disable
-func (cpu *CPU) cli(info *stepInfo) {
+func (cpu *CPU) cli() {
 	cpu.I = 0
 }
 
 // CLV - Clear Overflow Flag
-func (cpu *CPU) clv(info *stepInfo) {
+func (cpu *CPU) clv() {
 	cpu.V = 0
 }
 
 // CMP - Compare
-func (cpu *CPU) cmp(info *stepInfo) {
-	value := cpu.Read(info.address)
+func (cpu *CPU) cmp() {
+	value := cpu.Read(currentAddress)
 	cpu.compare(cpu.A, value)
 }
 
 // CPX - Compare X Register
-func (cpu *CPU) cpx(info *stepInfo) {
-	value := cpu.Read(info.address)
+func (cpu *CPU) cpx() {
+	value := cpu.Read(currentAddress)
 	cpu.compare(cpu.X, value)
 }
 
 // CPY - Compare Y Register
-func (cpu *CPU) cpy(info *stepInfo) {
-	value := cpu.Read(info.address)
+func (cpu *CPU) cpy() {
+	value := cpu.Read(currentAddress)
 	cpu.compare(cpu.Y, value)
 }
 
 // DEC - Decrement Memory
-func (cpu *CPU) dec(info *stepInfo) {
-	value := cpu.Read(info.address) - 1
-	cpu.Write(info.address, value)
+func (cpu *CPU) dec() {
+	value := cpu.Read(currentAddress) - 1
+	cpu.Write(currentAddress, value)
 	cpu.setZN(value)
 }
 
 // DEX - Decrement X Register
-func (cpu *CPU) dex(info *stepInfo) {
+func (cpu *CPU) dex() {
 	cpu.X--
 	cpu.setZN(cpu.X)
 }
 
 // DEY - Decrement Y Register
-func (cpu *CPU) dey(info *stepInfo) {
+func (cpu *CPU) dey() {
 	cpu.Y--
 	cpu.setZN(cpu.Y)
 }
 
 // EOR - Exclusive OR
-func (cpu *CPU) eor(info *stepInfo) {
-	cpu.A = cpu.A ^ cpu.Read(info.address)
+func (cpu *CPU) eor() {
+	cpu.A = cpu.A ^ cpu.Read(currentAddress)
 	cpu.setZN(cpu.A)
 }
 
 // INC - Increment Memory
-func (cpu *CPU) inc(info *stepInfo) {
-	value := cpu.Read(info.address) + 1
-	cpu.Write(info.address, value)
+func (cpu *CPU) inc() {
+	value := cpu.Read(currentAddress) + 1
+	cpu.Write(currentAddress, value)
 	cpu.setZN(value)
 }
 
 // INX - Increment X Register
-func (cpu *CPU) inx(info *stepInfo) {
+func (cpu *CPU) inx() {
 	cpu.X++
 	cpu.setZN(cpu.X)
 }
 
 // INY - Increment Y Register
-func (cpu *CPU) iny(info *stepInfo) {
+func (cpu *CPU) iny() {
 	cpu.Y++
 	cpu.setZN(cpu.Y)
 }
 
 // JMP - Jump
-func (cpu *CPU) jmp(info *stepInfo) {
-	cpu.PC = info.address
+func (cpu *CPU) jmp() {
+	cpu.PC = currentAddress
 }
 
 // JSR - Jump to Subroutine
-func (cpu *CPU) jsr(info *stepInfo) {
+func (cpu *CPU) jsr() {
 	cpu.push16(cpu.PC - 1)
-	cpu.PC = info.address
+	cpu.PC = currentAddress
 }
 
 // LDA - Load Accumulator
-func (cpu *CPU) lda(info *stepInfo) {
-	cpu.A = cpu.Read(info.address)
+func (cpu *CPU) lda() {
+	cpu.A = cpu.Read(currentAddress)
 	cpu.setZN(cpu.A)
 }
 
 // LDX - Load X Register
-func (cpu *CPU) ldx(info *stepInfo) {
-	cpu.X = cpu.Read(info.address)
+func (cpu *CPU) ldx() {
+	cpu.X = cpu.Read(currentAddress)
 	cpu.setZN(cpu.X)
 }
 
 // LDY - Load Y Register
-func (cpu *CPU) ldy(info *stepInfo) {
-	cpu.Y = cpu.Read(info.address)
+func (cpu *CPU) ldy() {
+	cpu.Y = cpu.Read(currentAddress)
 	cpu.setZN(cpu.Y)
 }
 
 // LSR - Logical Shift Right
-func (cpu *CPU) lsr(info *stepInfo) {
-	if info.mode == modeAccumulator {
+func (cpu *CPU) lsr() {
+	if currentMode == modeAccumulator {
 		cpu.C = cpu.A & 1
 		cpu.A >>= 1
 		cpu.setZN(cpu.A)
 	} else {
-		value := cpu.Read(info.address)
+		value := cpu.Read(currentAddress)
 		cpu.C = value & 1
 		value >>= 1
-		cpu.Write(info.address, value)
+		cpu.Write(currentAddress, value)
 		cpu.setZN(value)
 	}
 }
 
 // NOP - No Operation
-func (cpu *CPU) nop(info *stepInfo) {
+func (cpu *CPU) nop() {
 }
 
 // ORA - Logical Inclusive OR
-func (cpu *CPU) ora(info *stepInfo) {
-	cpu.A = cpu.A | cpu.Read(info.address)
+func (cpu *CPU) ora() {
+	cpu.A = cpu.A | cpu.Read(currentAddress)
 	cpu.setZN(cpu.A)
 }
 
 // PHA - Push Accumulator
-func (cpu *CPU) pha(info *stepInfo) {
+func (cpu *CPU) pha() {
 	cpu.push(cpu.A)
 }
 
 // PHP - Push Processor Status
-func (cpu *CPU) php(info *stepInfo) {
+func (cpu *CPU) php() {
 	cpu.push(cpu.Flags() | 0x10)
 }
 
 // PLA - Pull Accumulator
-func (cpu *CPU) pla(info *stepInfo) {
+func (cpu *CPU) pla() {
 	cpu.A = cpu.pull()
 	cpu.setZN(cpu.A)
 }
 
 // PLP - Pull Processor Status
-func (cpu *CPU) plp(info *stepInfo) {
+func (cpu *CPU) plp() {
 	cpu.SetFlags(cpu.pull()&0xEF | 0x20)
 }
 
 // ROL - Rotate Left
-func (cpu *CPU) rol(info *stepInfo) {
-	if info.mode == modeAccumulator {
+func (cpu *CPU) rol() {
+	if currentMode == modeAccumulator {
 		c := cpu.C
 		cpu.C = (cpu.A >> 7) & 1
 		cpu.A = (cpu.A << 1) | c
 		cpu.setZN(cpu.A)
 	} else {
 		c := cpu.C
-		value := cpu.Read(info.address)
+		value := cpu.Read(currentAddress)
 		cpu.C = (value >> 7) & 1
 		value = (value << 1) | c
-		cpu.Write(info.address, value)
+		cpu.Write(currentAddress, value)
 		cpu.setZN(value)
 	}
 }
 
 // ROR - Rotate Right
-func (cpu *CPU) ror(info *stepInfo) {
-	if info.mode == modeAccumulator {
+func (cpu *CPU) ror() {
+	if currentMode == modeAccumulator {
 		c := cpu.C
 		cpu.C = cpu.A & 1
 		cpu.A = (cpu.A >> 1) | (c << 7)
 		cpu.setZN(cpu.A)
 	} else {
 		c := cpu.C
-		value := cpu.Read(info.address)
+		value := cpu.Read(currentAddress)
 		cpu.C = value & 1
 		value = (value >> 1) | (c << 7)
-		cpu.Write(info.address, value)
+		cpu.Write(currentAddress, value)
 		cpu.setZN(value)
 	}
 }
 
 // RTI - Return from Interrupt
-func (cpu *CPU) rti(info *stepInfo) {
+func (cpu *CPU) rti() {
 	cpu.SetFlags(cpu.pull()&0xEF | 0x20)
 	cpu.PC = cpu.pull16()
 }
 
 // RTS - Return from Subroutine
-func (cpu *CPU) rts(info *stepInfo) {
+func (cpu *CPU) rts() {
 	cpu.PC = cpu.pull16() + 1
 }
 
 // SBC - Subtract with Carry
-func (cpu *CPU) sbc(info *stepInfo) {
+func (cpu *CPU) sbc() {
 	a := cpu.A
-	b := cpu.Read(info.address)
+	b := cpu.Read(currentAddress)
 	c := cpu.C
 	cpu.A = a - b - (1 - c)
 	cpu.setZN(cpu.A)
@@ -926,125 +934,125 @@ func (cpu *CPU) sbc(info *stepInfo) {
 }
 
 // SEC - Set Carry Flag
-func (cpu *CPU) sec(info *stepInfo) {
+func (cpu *CPU) sec() {
 	cpu.C = 1
 }
 
 // SED - Set Decimal Flag
-func (cpu *CPU) sed(info *stepInfo) {
+func (cpu *CPU) sed() {
 	cpu.D = 1
 }
 
 // SEI - Set Interrupt Disable
-func (cpu *CPU) sei(info *stepInfo) {
+func (cpu *CPU) sei() {
 	cpu.I = 1
 }
 
 // STA - Store Accumulator
-func (cpu *CPU) sta(info *stepInfo) {
-	cpu.Write(info.address, cpu.A)
+func (cpu *CPU) sta() {
+	cpu.Write(currentAddress, cpu.A)
 }
 
 // STX - Store X Register
-func (cpu *CPU) stx(info *stepInfo) {
-	cpu.Write(info.address, cpu.X)
+func (cpu *CPU) stx() {
+	cpu.Write(currentAddress, cpu.X)
 }
 
 // STY - Store Y Register
-func (cpu *CPU) sty(info *stepInfo) {
-	cpu.Write(info.address, cpu.Y)
+func (cpu *CPU) sty() {
+	cpu.Write(currentAddress, cpu.Y)
 }
 
 // TAX - Transfer Accumulator to X
-func (cpu *CPU) tax(info *stepInfo) {
+func (cpu *CPU) tax() {
 	cpu.X = cpu.A
 	cpu.setZN(cpu.X)
 }
 
 // TAY - Transfer Accumulator to Y
-func (cpu *CPU) tay(info *stepInfo) {
+func (cpu *CPU) tay() {
 	cpu.Y = cpu.A
 	cpu.setZN(cpu.Y)
 }
 
 // TSX - Transfer Stack Pointer to X
-func (cpu *CPU) tsx(info *stepInfo) {
+func (cpu *CPU) tsx() {
 	cpu.X = cpu.SP
 	cpu.setZN(cpu.X)
 }
 
 // TXA - Transfer X to Accumulator
-func (cpu *CPU) txa(info *stepInfo) {
+func (cpu *CPU) txa() {
 	cpu.A = cpu.X
 	cpu.setZN(cpu.A)
 }
 
 // TXS - Transfer X to Stack Pointer
-func (cpu *CPU) txs(info *stepInfo) {
+func (cpu *CPU) txs() {
 	cpu.SP = cpu.X
 }
 
 // TYA - Transfer Y to Accumulator
-func (cpu *CPU) tya(info *stepInfo) {
+func (cpu *CPU) tya() {
 	cpu.A = cpu.Y
 	cpu.setZN(cpu.A)
 }
 
-// illegal opcodes below
+// - Instruções encontradas apenas em illegal opcodes
 
-func (cpu *CPU) ahx(info *stepInfo) {
+func (cpu *CPU) ahx() {
 }
 
-func (cpu *CPU) alr(info *stepInfo) {
+func (cpu *CPU) alr() {
 }
 
-func (cpu *CPU) anc(info *stepInfo) {
+func (cpu *CPU) anc() {
 }
 
-func (cpu *CPU) arr(info *stepInfo) {
+func (cpu *CPU) arr() {
 }
 
-func (cpu *CPU) axs(info *stepInfo) {
+func (cpu *CPU) axs() {
 }
 
-func (cpu *CPU) dcp(info *stepInfo) {
+func (cpu *CPU) dcp() {
 }
 
-func (cpu *CPU) isc(info *stepInfo) {
+func (cpu *CPU) isc() {
 }
 
-func (cpu *CPU) kil(info *stepInfo) {
+func (cpu *CPU) kil() {
 }
 
-func (cpu *CPU) las(info *stepInfo) {
+func (cpu *CPU) las() {
 }
 
-func (cpu *CPU) lax(info *stepInfo) {
+func (cpu *CPU) lax() {
 }
 
-func (cpu *CPU) rla(info *stepInfo) {
+func (cpu *CPU) rla() {
 }
 
-func (cpu *CPU) rra(info *stepInfo) {
+func (cpu *CPU) rra() {
 }
 
-func (cpu *CPU) sax(info *stepInfo) {
+func (cpu *CPU) sax() {
 }
 
-func (cpu *CPU) shx(info *stepInfo) {
+func (cpu *CPU) shx() {
 }
 
-func (cpu *CPU) shy(info *stepInfo) {
+func (cpu *CPU) shy() {
 }
 
-func (cpu *CPU) slo(info *stepInfo) {
+func (cpu *CPU) slo() {
 }
 
-func (cpu *CPU) sre(info *stepInfo) {
+func (cpu *CPU) sre() {
 }
 
-func (cpu *CPU) tas(info *stepInfo) {
+func (cpu *CPU) tas() {
 }
 
-func (cpu *CPU) xaa(info *stepInfo) {
+func (cpu *CPU) xaa() {
 }
