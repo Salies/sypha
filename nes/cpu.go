@@ -1000,59 +1000,104 @@ func (cpu *CPU) tya() {
 
 // - Instruções encontradas apenas em illegal opcodes
 
-func (cpu *CPU) ahx() {
-}
-
-func (cpu *CPU) alr() {
-}
-
-func (cpu *CPU) anc() {
-}
-
-func (cpu *CPU) arr() {
-}
-
-func (cpu *CPU) axs() {
-}
-
-func (cpu *CPU) dcp() {
-}
-
-func (cpu *CPU) isc() {
-}
-
-func (cpu *CPU) kil() {
-}
-
-func (cpu *CPU) las() {
-}
-
-func (cpu *CPU) lax() {
+func (cpu *CPU) slo() {
+	cpu.asl()
+	cpu.ora()
 }
 
 func (cpu *CPU) rla() {
-}
-
-func (cpu *CPU) rra() {
-}
-
-func (cpu *CPU) sax() {
-}
-
-func (cpu *CPU) shx() {
-}
-
-func (cpu *CPU) shy() {
-}
-
-func (cpu *CPU) slo() {
+	cpu.rol()
+	cpu.and()
 }
 
 func (cpu *CPU) sre() {
+	cpu.lsr()
+	cpu.eor()
 }
 
-func (cpu *CPU) tas() {
+func (cpu *CPU) rra() {
+	cpu.ror()
+	cpu.adc()
+}
+
+func (cpu *CPU) sax() {
+	cpu.Write(currentAddress, cpu.A&cpu.X)
+}
+
+func (cpu *CPU) lax() {
+	cpu.A = cpu.Read(currentAddress)
+	cpu.X = cpu.A
+	cpu.setZN(cpu.A)
+}
+
+func (cpu *CPU) dcp() {
+	value := cpu.Read(currentAddress) - 1
+	cpu.Write(currentAddress, value)
+	cpu.compare(cpu.A, value)
+}
+
+func (cpu *CPU) isc() {
+	value := cpu.Read(currentAddress) + 1
+	cpu.Write(currentAddress, value)
+	cpu.sbc()
+}
+
+func (cpu *CPU) anc() {
+	cpu.A = cpu.A & cpu.Read(currentAddress)
+	cpu.setZN(cpu.A)
+	cpu.C = cpu.N
+}
+
+func (cpu *CPU) alr() {
+	cpu.A = cpu.A & cpu.Read(currentAddress)
+	cpu.lsr()
+}
+
+func (cpu *CPU) arr() {
+	cpu.A = cpu.A & cpu.Read(currentAddress)
+	cpu.ror()
 }
 
 func (cpu *CPU) xaa() {
+	cpu.A = cpu.X & cpu.Read(currentAddress)
+	cpu.setZN(cpu.A)
+}
+
+func (cpu *CPU) axs() {
+	cpu.X = cpu.A & cpu.X
+	cpu.setZN(cpu.X)
+}
+
+func (cpu *CPU) ahx() {
+	h := byte((currentAddress >> 8) & 0xFF)
+	cpu.Write(currentAddress, cpu.A&cpu.X&h)
+}
+
+// Eu gosto das tímidas
+func (cpu *CPU) shy() {
+	h := byte((currentAddress >> 8) & 0xFF)
+	cpu.Write(currentAddress, cpu.Y&h)
+}
+
+func (cpu *CPU) shx() {
+	h := byte((currentAddress >> 8) & 0xFF)
+	cpu.Write(currentAddress, cpu.X&h)
+}
+
+func (cpu *CPU) tas() {
+	h := byte((currentAddress >> 8) & 0xFF)
+	cpu.SP = cpu.A & cpu.X
+	cpu.Write(currentAddress, cpu.SP&h)
+}
+
+func (cpu *CPU) las() {
+	value := cpu.Read(currentAddress) & cpu.SP
+	cpu.A = value
+	cpu.X = value
+	cpu.SP = value
+}
+
+// CPU halt
+func (cpu *CPU) kil() {
+	cpu.PC--
 }
