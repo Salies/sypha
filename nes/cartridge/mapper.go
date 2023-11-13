@@ -10,7 +10,7 @@ type Mapper interface {
 	Step()
 }
 
-func NewMapper(cartridge *Cartridge) (Mapper, error) {
+func MapperFactory(cartridge *Cartridge) (Mapper, error) {
 	switch cartridge.Mapper {
 	case 0:
 		return NewMapper2(cartridge), nil

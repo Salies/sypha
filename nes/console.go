@@ -29,7 +29,7 @@ func NewConsole(path string) (*Console, error) {
 	controller2 := NewController()
 	console := Console{
 		nil, nil, nil, c, controller1, controller2, nil, ram}
-	mapper, err := cartridge.NewMapper(c)
+	mapper, err := cartridge.MapperFactory(c)
 	if err != nil {
 		return nil, err
 	}
