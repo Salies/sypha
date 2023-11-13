@@ -1024,6 +1024,7 @@ func (cpu *CPU) sax() {
 	cpu.Write(currentAddress, cpu.A&cpu.X)
 }
 
+// may have immediate mode
 func (cpu *CPU) lax() {
 	cpu.A = cpu.Read(currentAddress)
 	cpu.X = cpu.A
@@ -1042,6 +1043,7 @@ func (cpu *CPU) isc() {
 	cpu.sbc()
 }
 
+// imm may change
 func (cpu *CPU) anc() {
 	cpu.A = cpu.A & cpu.Read(currentAddress)
 	cpu.setZN(cpu.A)
