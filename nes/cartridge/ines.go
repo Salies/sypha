@@ -1,4 +1,4 @@
-package nes
+package cartridge
 
 import (
 	"encoding/binary"

@@ -1,4 +1,4 @@
-package nes
+package cartridge
 
 type Cartridge struct {
 	PRG     []byte // PRG-ROM banks

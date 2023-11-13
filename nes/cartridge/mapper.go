@@ -1,4 +1,4 @@
-package nes
+package cartridge
 
 import (
 	"fmt"
@@ -10,8 +10,7 @@ type Mapper interface {
 	Step()
 }
 
-func NewMapper(console *Console) (Mapper, error) {
-	cartridge := console.Cartridge
+func NewMapper(cartridge *Cartridge) (Mapper, error) {
 	switch cartridge.Mapper {
 	case 0:
 		return NewMapper2(cartridge), nil

@@ -5,21 +5,22 @@ import (
 	"image/color"
 
 	"github.com/Salies/sypha/nes/apu"
+	"github.com/Salies/sypha/nes/cartridge"
 )
 
 type Console struct {
 	CPU         *CPU
 	APU         *apu.APU
 	PPU         *PPU
-	Cartridge   *Cartridge
+	Cartridge   *cartridge.Cartridge
 	Controller1 *Controller
 	Controller2 *Controller
-	Mapper      Mapper
+	Mapper      cartridge.Mapper
 	RAM         []byte
 }
 
 func NewConsole(path string) (*Console, error) {
-	cartridge, err := LoadNESFile(path)
+	c, err := cartridge.LoadNESFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -27,8 +28,8 @@ func NewConsole(path string) (*Console, error) {
 	controller1 := NewController()
 	controller2 := NewController()
 	console := Console{
-		nil, nil, nil, cartridge, controller1, controller2, nil, ram}
-	mapper, err := NewMapper(&console)
+		nil, nil, nil, c, controller1, controller2, nil, ram}
+	mapper, err := cartridge.NewMapper(c)
 	if err != nil {
 		return nil, err
 	}
