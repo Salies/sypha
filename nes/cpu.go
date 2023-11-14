@@ -2,7 +2,6 @@ package nes
 
 import (
 	"fmt"
-	"log"
 )
 
 const CPUFrequency = 1789773
@@ -43,7 +42,7 @@ type Instruction struct {
 }
 
 type CPU struct {
-	Memory              // memory interface
+	Bus                 // memory interface
 	Cycles       uint64 // number of cycles
 	PC           uint16 // program counter
 	SP           byte   // stack pointer
@@ -63,69 +62,8 @@ type CPU struct {
 	instructions [256]Instruction
 }
 
-// Emulação do barramento de memória da CPU
-// Alguns preferem mantê-lo separado, contudo, preferimos manter
-// junto para deixar o código mais objetivo. Dada a simplicidade do NES, isto não é um problema.
-type cpuMemory struct {
-	console *Console
-}
-
-func NewCPUMemory(console *Console) Memory {
-	return &cpuMemory{console}
-}
-
-func (mem *cpuMemory) Read(address uint16) byte {
-	switch {
-	case address < 0x2000:
-		return mem.console.RAM[address%0x0800]
-	case address < 0x4000:
-		return mem.console.PPU.readRegister(0x2000 + address%8)
-	case address == 0x4014:
-		return mem.console.PPU.readRegister(address)
-	case address == 0x4015:
-		return mem.console.APU.ReadRegister(address)
-	case address == 0x4016:
-		return mem.console.Controller1.Read()
-	case address == 0x4017:
-		return mem.console.Controller2.Read()
-	case address < 0x6000:
-		// TODO: I/O registers
-	case address >= 0x6000:
-		return mem.console.Mapper.Read(address)
-	default:
-		log.Fatalf("unhandled cpu memory read at address: 0x%04X", address)
-	}
-	return 0
-}
-
-func (mem *cpuMemory) Write(address uint16, value byte) {
-	switch {
-	case address < 0x2000:
-		mem.console.RAM[address%0x0800] = value
-	case address < 0x4000:
-		mem.console.PPU.writeRegister(0x2000+address%8, value)
-	case address < 0x4014:
-		mem.console.APU.WriteRegister(address, value)
-	case address == 0x4014:
-		mem.console.PPU.writeRegister(address, value)
-	case address == 0x4015:
-		mem.console.APU.WriteRegister(address, value)
-	case address == 0x4016:
-		mem.console.Controller1.Write(value)
-		mem.console.Controller2.Write(value)
-	case address == 0x4017:
-		mem.console.APU.WriteRegister(address, value)
-	case address < 0x6000:
-		// TODO: I/O registers
-	case address >= 0x6000:
-		mem.console.Mapper.Write(address, value)
-	default:
-		log.Fatalf("unhandled cpu memory write at address: 0x%04X", address)
-	}
-}
-
 func NewCPU(console *Console) *CPU {
-	cpu := CPU{Memory: NewCPUMemory(console)}
+	cpu := CPU{Bus: NewCPUBus(console)}
 	cpu.instructions = [256]Instruction{
 		{6, 2, 7, 0, "BRK", cpu.brk},
 		{7, 2, 6, 0, "ORA", cpu.ora},
