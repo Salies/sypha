@@ -36,6 +36,35 @@ const (
 	modeZeroPageY
 )
 
+const (
+	_ byte = iota
+	/*
+		Fonte: https://www.nesdev.org/wiki/Status_flags
+
+		7  bit  0
+		---- ----
+		NV1B DIZC
+		|||| ||||
+		|||| |||+- Carry
+		|||| ||+-- Zero
+		|||| |+--- Interrupt Disable
+		|||| +---- Decimal
+		|||+------ (No CPU effect; see: the B flag)
+		||+------- (No CPU effect; always pushed as 1)
+		|+-------- Overflow
+		+--------- Negative
+	*/
+	// deixando em binário para ficar mais claro
+	statusCarry
+	statusZero             byte = 0b00000010
+	statusInterruptDisable byte = 0b00000100
+	statusDecimal          byte = 0b00001000
+	statusBreak            byte = 0b00010000
+	statusUnused           byte = 0b00100000
+	statusOverflow         byte = 0b01000000
+	statusNegative         byte = 0b10000000
+)
+
 // Struct para representar uma instrução da CPU
 type Instruction struct {
 	mode       byte   // Modo de endereçamento
@@ -45,10 +74,6 @@ type Instruction struct {
 	name       string // Nome da instrução
 	call       func() // Função que implementa a instrução
 }
-
-/*type StatusRegister struct {
-	C bool // Carry flag
-}*/
 
 type CPU struct {
 	Bus           // Representação do baramento de memória da CPU
@@ -60,17 +85,7 @@ type CPU struct {
 	Y  byte   // registrador de índice Y
 	PC uint16 // contador de programa
 	S  byte   // apontador de pilha
-	// Flags
-	// TODO: converter e comentar depois
-	// https://www.nesdev.org/wiki/Status_flags
-	C byte // carry flag
-	Z byte // zero flag
-	I byte // interrupt disable flag
-	D byte // decimal mode flag
-	B byte // break command flag
-	U byte // unused flag
-	V byte // overflow flag
-	N byte // negative flag
+	P  byte   // registrador de status (flags)
 	// Atributos auxiliares
 	interrupt      byte   // tipo de interrupção pendente
 	stall          int    // quantidade de ciclos de stall (atraso)
@@ -373,10 +388,11 @@ func (cpu *CPU) PrintInstruction() {
 		"%4X  %s %s %s  %s %28s"+
 			"A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%3d\n",
 		cpu.PC, w0, w1, w2, name, "",
-		cpu.A, cpu.X, cpu.Y, cpu.Flags(), cpu.S, (cpu.Cycles*3)%341)
+		cpu.A, cpu.X, cpu.Y, cpu.P, cpu.S, (cpu.Cycles*3)%341)
 }
 
 // Funções auxiliares
+
 // retorna true se os endereços referem-se a páginas diferentes
 func pagesDiffer(a, b uint16) bool {
 	return a&0xFF00 != b&0xFF00
@@ -394,9 +410,9 @@ func (cpu *CPU) addBranchCycles() {
 func (cpu *CPU) compare(a, b byte) {
 	cpu.setZN(a - b)
 	if a >= b {
-		cpu.C = 1
+		cpu.P |= statusCarry
 	} else {
-		cpu.C = 0
+		cpu.P &= ^statusCarry
 	}
 }
 
@@ -444,7 +460,7 @@ func (cpu *CPU) pull16() uint16 {
 }
 
 // retorna as flags do processador como um byte
-func (cpu *CPU) Flags() byte {
+/*func (cpu *CPU) Flags() byte {
 	var flags byte
 	flags |= cpu.C << 0
 	flags |= cpu.Z << 1
@@ -455,10 +471,10 @@ func (cpu *CPU) Flags() byte {
 	flags |= cpu.V << 6
 	flags |= cpu.N << 7
 	return flags
-}
+}*/
 
 // seta as flags do processador de acordo com o byte passado
-func (cpu *CPU) SetFlags(flags byte) {
+/*func (cpu *CPU) SetFlags(flags byte) {
 	cpu.C = (flags >> 0) & 1
 	cpu.Z = (flags >> 1) & 1
 	cpu.I = (flags >> 2) & 1
@@ -467,23 +483,27 @@ func (cpu *CPU) SetFlags(flags byte) {
 	cpu.U = (flags >> 5) & 1
 	cpu.V = (flags >> 6) & 1
 	cpu.N = (flags >> 7) & 1
+}*/
+
+func (cpu *CPU) SetFlags(flags byte) {
+	cpu.P = flags
 }
 
 // seta a flag Z se o valor for zero
 func (cpu *CPU) setZ(value byte) {
 	if value == 0 {
-		cpu.Z = 1
+		cpu.P |= statusZero
 	} else {
-		cpu.Z = 0
+		cpu.P &= ^statusZero
 	}
 }
 
 // seta a flag N se o bit 7 estiver setado
 func (cpu *CPU) setN(value byte) {
 	if value&0x80 != 0 {
-		cpu.N = 1
+		cpu.P |= statusNegative
 	} else {
-		cpu.N = 0
+		cpu.P &= ^statusNegative
 	}
 }
 
@@ -500,7 +520,7 @@ func (cpu *CPU) triggerNMI() {
 
 // triggerIRQ causa uma interrupção IRQ no próximo ciclo
 func (cpu *CPU) triggerIRQ() {
-	if cpu.I == 0 {
+	if (cpu.P & statusInterruptDisable) == 0 {
 		cpu.interrupt = interruptIRQ
 	}
 }
@@ -608,38 +628,37 @@ func (cpu *CPU) eor() {
 
 func (cpu *CPU) adc() {
 	a := cpu.A
-	//b := cpu.Read(info.address)
 	b := cpu.Read(cpu.currentAddress)
-	c := cpu.C
+	c := cpu.P & statusCarry
 	cpu.A = a + b + c
 	cpu.setZN(cpu.A)
 	if int(a)+int(b)+int(c) > 0xFF {
-		cpu.C = 1
+		cpu.P |= statusCarry
 	} else {
-		cpu.C = 0
+		cpu.P &= ^statusCarry
 	}
 	if (a^b)&0x80 == 0 && (a^cpu.A)&0x80 != 0 {
-		cpu.V = 1
+		cpu.P |= statusOverflow
 	} else {
-		cpu.V = 0
+		cpu.P &= ^statusOverflow
 	}
 }
 
 func (cpu *CPU) sbc() {
 	a := cpu.A
 	b := cpu.Read(cpu.currentAddress)
-	c := cpu.C
+	c := cpu.P & statusCarry
 	cpu.A = a - b - (1 - c)
 	cpu.setZN(cpu.A)
 	if int(a)-int(b)-int(1-c) >= 0 {
-		cpu.C = 1
+		cpu.P |= statusCarry
 	} else {
-		cpu.C = 0
+		cpu.P &= ^statusCarry
 	}
 	if (a^b)&0x80 != 0 && (a^cpu.A)&0x80 != 0 {
-		cpu.V = 1
+		cpu.P |= statusOverflow
 	} else {
-		cpu.V = 0
+		cpu.P &= ^statusOverflow
 	}
 }
 
@@ -692,13 +711,13 @@ func (cpu *CPU) iny() {
 
 func (cpu *CPU) asl() {
 	if cpu.currentMode == modeAccumulator {
-		cpu.C = (cpu.A >> 7) & 1
+		cpu.P = (cpu.P & ^statusCarry) | ((cpu.A >> 7) & 1)
 		cpu.A <<= 1
 		cpu.setZN(cpu.A)
 	} else {
 		//value := cpu.Read(info.address)
 		value := cpu.Read(cpu.currentAddress)
-		cpu.C = (value >> 7) & 1
+		cpu.P = (cpu.P & ^statusCarry) | (value>>7)&1
 		value <<= 1
 		//cpu.Write(info.address, value)
 		cpu.Write(cpu.currentAddress, value)
@@ -708,14 +727,14 @@ func (cpu *CPU) asl() {
 
 func (cpu *CPU) rol() {
 	if cpu.currentMode == modeAccumulator {
-		c := cpu.C
-		cpu.C = (cpu.A >> 7) & 1
+		c := cpu.P & statusCarry
+		cpu.P = (cpu.P & ^statusCarry) | ((cpu.A >> 7) & 1)
 		cpu.A = (cpu.A << 1) | c
 		cpu.setZN(cpu.A)
 	} else {
-		c := cpu.C
+		c := cpu.P & statusCarry
 		value := cpu.Read(cpu.currentAddress)
-		cpu.C = (value >> 7) & 1
+		cpu.P = (cpu.P & ^statusCarry) | ((value >> 7) & 1)
 		value = (value << 1) | c
 		cpu.Write(cpu.currentAddress, value)
 		cpu.setZN(value)
@@ -724,12 +743,12 @@ func (cpu *CPU) rol() {
 
 func (cpu *CPU) lsr() {
 	if cpu.currentMode == modeAccumulator {
-		cpu.C = cpu.A & 1
+		cpu.P = (cpu.P & ^statusCarry) | (cpu.A & 1)
 		cpu.A >>= 1
 		cpu.setZN(cpu.A)
 	} else {
 		value := cpu.Read(cpu.currentAddress)
-		cpu.C = value & 1
+		cpu.P = (cpu.P & ^statusCarry) | (value & 1)
 		value >>= 1
 		cpu.Write(cpu.currentAddress, value)
 		cpu.setZN(value)
@@ -738,14 +757,14 @@ func (cpu *CPU) lsr() {
 
 func (cpu *CPU) ror() {
 	if cpu.currentMode == modeAccumulator {
-		c := cpu.C
-		cpu.C = cpu.A & 1
+		c := cpu.P & statusCarry
+		cpu.P = (cpu.P & ^statusCarry) | (cpu.A & 1)
 		cpu.A = (cpu.A >> 1) | (c << 7)
 		cpu.setZN(cpu.A)
 	} else {
-		c := cpu.C
+		c := cpu.P & statusCarry
 		value := cpu.Read(cpu.currentAddress)
-		cpu.C = value & 1
+		cpu.P = (cpu.P & ^statusCarry) | (value & 1)
 		value = (value >> 1) | (c << 7)
 		cpu.Write(cpu.currentAddress, value)
 		cpu.setZN(value)
@@ -823,41 +842,41 @@ func (cpu *CPU) plp() {
 }
 
 func (cpu *CPU) php() {
-	cpu.push(cpu.Flags() | 0x10)
+	cpu.push(cpu.P | 0x10)
 }
 
 // Comandos de jump/flag
 
 func (cpu *CPU) bpl() {
-	if cpu.N == 0 {
+	if cpu.P&statusNegative == 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) bmi() {
-	if cpu.N != 0 {
+	if cpu.P&statusNegative != 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) bvc() {
-	if cpu.V == 0 {
+	if cpu.P&statusOverflow == 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) bvs() {
-	if cpu.V != 0 {
+	if cpu.P&statusOverflow != 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) bcc() {
-	if cpu.C == 0 {
+	if cpu.P&statusCarry == 0 {
 		//cpu.PC = info.address
 		//cpu.addBranchCycles(info)
 		cpu.PC = cpu.currentAddress
@@ -866,21 +885,21 @@ func (cpu *CPU) bcc() {
 }
 
 func (cpu *CPU) bcs() {
-	if cpu.C != 0 {
+	if cpu.P&statusCarry != 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) bne() {
-	if cpu.Z == 0 {
+	if cpu.P&statusZero == 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
 }
 
 func (cpu *CPU) beq() {
-	if cpu.Z != 0 {
+	if cpu.P&statusZero != 0 {
 		cpu.PC = cpu.currentAddress
 		cpu.addBranchCycles()
 	}
@@ -913,37 +932,37 @@ func (cpu *CPU) jmp() {
 
 func (cpu *CPU) bit() {
 	value := cpu.Read(cpu.currentAddress)
-	cpu.V = (value >> 6) & 1
+	cpu.P = (cpu.P & ^statusOverflow) | (value>>6)&1
 	cpu.setZ(value & cpu.A)
 	cpu.setN(value)
 }
 
 func (cpu *CPU) clc() {
-	cpu.C = 0
+	cpu.P &= ^statusCarry
 }
 
 func (cpu *CPU) sec() {
-	cpu.C = 1
+	cpu.P |= statusCarry
 }
 
 func (cpu *CPU) cld() {
-	cpu.D = 0
+	cpu.P &= ^statusDecimal
 }
 
 func (cpu *CPU) sed() {
-	cpu.D = 1
+	cpu.P |= statusDecimal
 }
 
 func (cpu *CPU) cli() {
-	cpu.I = 0
+	cpu.P &= ^statusInterruptDisable
 }
 
 func (cpu *CPU) sei() {
-	cpu.I = 1
+	cpu.P |= statusInterruptDisable
 }
 
 func (cpu *CPU) clv() {
-	cpu.V = 0
+	cpu.P &= ^statusOverflow
 }
 
 func (cpu *CPU) nop() {
@@ -954,7 +973,7 @@ func (cpu *CPU) nmi() {
 	cpu.push16(cpu.PC)
 	cpu.php()
 	cpu.PC = cpu.Read16(0xFFFA)
-	cpu.I = 1
+	cpu.P |= statusInterruptDisable
 	cpu.Cycles += 7
 }
 
@@ -963,7 +982,7 @@ func (cpu *CPU) irq() {
 	cpu.push16(cpu.PC)
 	cpu.php()
 	cpu.PC = cpu.Read16(0xFFFE)
-	cpu.I = 1
+	cpu.P |= statusInterruptDisable
 	cpu.Cycles += 7
 }
 
@@ -1017,7 +1036,8 @@ func (cpu *CPU) isc() {
 func (cpu *CPU) anc() {
 	cpu.A = cpu.A & cpu.Read(cpu.currentAddress)
 	cpu.setZN(cpu.A)
-	cpu.C = cpu.N
+	n := cpu.P & statusNegative
+	cpu.P = (cpu.P & ^statusCarry) | n
 }
 
 func (cpu *CPU) alr() {
