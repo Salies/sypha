@@ -1,0 +1,49 @@
+- Índice
+
+1. Introdução
+[propósito: apresentar o projeto para interessados em continuá-lo ou em criar algo semelhante, trazendo referências e mostrando os principais desafios e como contorná-los]
+[fala um pouco de emulação]
+1.2. Emulação alto nível vs baixo nível
+[...]
+[baixo nível: software ou hardware (FPGA)]
+
+2. Objetivos
+[criar um emulador de baixo nível...]
+[nes jogável com vídeo]
+[opcional: controle e áudio]
+
+3. Arquitetura do NES
+[começo: arquitetura geral]
+[o primeiro passo é compreender a arquitetura]
+[imagem - componentes, para compreender tudoo que terá que ser emulado]
+[mencionar todos os componentes, falar do barramento aqui]
+3.1 CPU
+3.2 PPU
+3.3 APU
+[problema da concorrência (threads) e sincronização]
+3.4 Cartuchos
+[cartuchos tem ROM]
+[em emuladores são comumente utilizados dumps da memória ROM do cartucho, usualmente chamadas apenas de "ROMs"]
+3.4.1 Mappers
+3.4.2 Formatos de distribuição de ROMs
+[explicar o ines]
+3.5 Controles
+
+4. Desenvolvimento do emulador
+[a ideia deste capítulo e prover uma visão geral da estrutura do projeto - para entender o código em si, recomenda-se a leitura do mesmo e de seus respectivos comentários]
+4.1 Emulação do hardware
+[literalmente explicar o código]
+[uma função pro step, funções auxiliares, uma função p/ cada um do conjunto de instruções, incluindo opcodes ilegais]
+[um parágrafo p/ cada componente]
+4.2 Emulação de componentes externos (entrada e saída)
+4.3 Funcionamento do emulador
+[literalmente um passo-a-passo]
+[primeiro é carregado a rom...]
+
+5. Conclusão
+[muito desafiador]
+[resultado muito satisfatório, atingiu todas as expectativas]
+[foi possível exercitar diversos preceitos de hardware, e até mesmo de sistemas operacionais (threads e concorrência)]
+[projeto é expansível/"continuável": melhoria da renderização, APU e, especialmente, implementação de outros mappers]
+
+- Referências
