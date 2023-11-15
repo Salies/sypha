@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	// É necessário passar o caminho para uma ROM como argumento
 	if len(os.Args) == 1 {
 		log.Fatalln("ERRO: por favor, informe o caminho para uma ROM.")
 	}
